@@ -87,7 +87,8 @@ Install below plugins:
 <Follow the process as explained in the video>
 
 11. SonarQube configuration in Jenkins
-<Follow the process as explained in the video>
+ create token to add in jenkins - go to administration - got to security - users - create token & add it in jenkins so it will connect with sonarQube - add in credentials 
+later in jenkins system - add sonarqube url in jenkins system add sonar 
 
 11.1. Tools Configuration in Jenkins
 <Follow the process as explained in the video>
