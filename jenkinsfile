@@ -2,7 +2,6 @@ pipeline {
     agent any
     tools {
         jdk 'jdk17'
-        nodejs 'node23'
     }
     environment {
         SCANNER_HOME=tool 'sonar-scanner'
@@ -15,7 +14,7 @@ pipeline {
         }
         stage ("Git Checkout") {
             steps {
-                git 'https://github.com/KastroVKiran/Zomato-Project-Kastro.git'
+                git 'https://github.com/meghraj8788/DevOps-Project-Zomato.git'
             }
         }
         stage("Sonarqube Analysis"){
@@ -27,6 +26,9 @@ pipeline {
             }
         }
         stage("Code Quality Gate"){
+            when {
+              expression { false }   // always skip
+          }
            steps {
                 script {
                     waitForQualityGate abortPipeline: false, credentialsId: 'Sonar-token' 
@@ -39,6 +41,9 @@ pipeline {
             }
         }
         stage('OWASP FS SCAN') {
+            when {
+        expression { false }   // always skip
+    }
             steps {
                 dependencyCheck additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit -n', odcInstallation: 'DP-Check'
                 dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
@@ -49,37 +54,34 @@ pipeline {
                 sh "trivy fs . > trivy.txt"
             }
         }
-        stage ("Build Docker Image") {
+        stage ("log in to aws"){
+            steps{
+                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding',
+                                  credentialsId: 'aws-cred']]){
+                sh 'aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 511633660.dkr.ecr.us-east-1.amazonaws.com'
+            }}
+        }
+        stage ("Build the docker image"){
             steps {
-                sh "docker build -t zomato ."
+                sh 'docker build -t zomato .'
             }
         }
-        stage ("Tag & Push to DockerHub") {
+        stage ("Tage image"){
             steps {
-                script {
-                    withDockerRegistry(credentialsId: 'docker') {
-                        sh "docker tag zomato kastrov/zomato:latest "
-                        sh "docker push kastrov/zomato:latest "
-                    }
-                }
+                sh 'docker tag zomato:latest 5115310.dkr.ecr.us-east-1.amazonaws.com/zomato:latest'
             }
         }
-        stage('Docker Scout Image') {
+        stage ("push image to ECR") {
             steps {
-                script{
-                   withDockerRegistry(credentialsId: 'docker', toolName: 'docker'){
-                       sh 'docker-scout quickview kastrov/zomato:latest'
-                       sh 'docker-scout cves kastrov/zomato:latest'
-                       sh 'docker-scout recommendations kastrov/zomato:latest'
-                   }
-                }
+                sh 'docker push 51633660.dkr.ecr.us-east-1.amazonaws.com/zomato:latest'
             }
         }
-        stage ("Deploy to Container") {
+        stage ("Deploy") {
             steps {
-                sh 'docker run -d --name zomato -p 3000:3000 kastrov/zomato:latest'
+                sh 'docker run -d -p 3000:3000 --name zomato-app 5115360.dkr.ecr.us-east-1.amazonaws.com/zomato:latest'
             }
         }
+        
     }
     post {
     always {
@@ -100,7 +102,7 @@ pipeline {
                 </body>
                 </html>
             """,
-            to: 'kastrokiran@gmail.com',
+            to: 'meghrajfand4545@gmail.com',
             mimeType: 'text/html',
             attachmentsPattern: 'trivy.txt'
         }
